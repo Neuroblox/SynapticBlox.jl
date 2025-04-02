@@ -46,7 +46,7 @@ using GraphDynamics:
     get_states,
     get_params,
     calculate_inputs,
-    to_vec_o_states,
+    partitioned,
     maybe_sparse_enumerate_col
 
 using Accessors:

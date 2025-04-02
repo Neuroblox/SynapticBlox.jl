@@ -354,10 +354,10 @@ function GraphDynamics.apply_discrete_event!(integrator,
                                              m_src::Subsystem{Matrisome},
                                              m_dst::Subsystem{Matrisome})
 
-    (;params_partitioned, state_types_val, connection_matrices) = integrator.p
+    (;params_partitioned, partition_plan, connection_matrices) = integrator.p
     u = integrator.u
     t = integrator.t
-    states_partitioned = to_vec_o_states(u.x, state_types_val)
+    states_partitioned = partitioned(u, partition_plan)
 
     (;t_event) = ec.event_times
             
@@ -375,10 +375,10 @@ end
 using Base: isstored
 
 function find_competitor_matrisome(integrator, m::Subsystem{Matrisome}, j)
-    (;params_partitioned, state_types_val, connection_matrices) = integrator.p
+    (;params_partitioned, partition_plan, connection_matrices) = integrator.p
     u = integrator.u
     t = integrator.t
-    states_partitioned = to_vec_o_states(u.x, state_types_val)
+    states_partitioned = partitioned(u, partition_plan)
     i = findfirst(v -> eltype(v) <: SubsystemStates{Matrisome}, states_partitioned)
     l = findfirst(eachindex(states_partitioned[i])) do l
         found = false

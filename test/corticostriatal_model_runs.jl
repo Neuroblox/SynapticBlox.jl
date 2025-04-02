@@ -17,7 +17,7 @@ function smaller_cortiostriatal_learning_run(;time_block_dur = 90.0, ## ms (size
     
     # download the stimulus images
     #image_set = joinpath(@__DIR__, "image_example.csv") #stimulus image file
-    
+    @time begin
     image_set = joinpath(@__DIR__, "stimuli_set_small.csv")
     #CSV.File(Downloads.download("raw.githubusercontent.com/Neuroblox/NeurobloxDocsHost/refs/heads/main/data/stimuli_set.csv")) ## reading data into DataFrame format
 
@@ -73,8 +73,9 @@ function smaller_cortiostriatal_learning_run(;time_block_dur = 90.0, ## ms (size
     @named env = ClassificationEnvironment(stim, N_trials)
     
     N_t_block=round(Int, env.t_trial/time_block_dur, RoundUp)
-    @named agent = Agent(g; t_block = time_block_dur, N_t_block); ## define agent
-    
+        @named agent = Agent(g; t_block = time_block_dur, N_t_block); ## define agent
+        print("Construction:  "); 
+    end
     trace = run_experiment!(agent, env; t_warmup=200.0, alg=Vern7(), verbose=true, save_everystep=false)
 end
 
@@ -170,7 +171,7 @@ function big_cortiocostriatal_learning_run()
         @named agent = Agent(g; t_block, N_t_block);
         print("Construction:  "); 
     end 
-    
+    agent
     @time run_experiment!(agent, env; alg=Vern7(), t_warmup=800.0, save_everystep=false, verbose=true)
 end
 
