@@ -76,13 +76,15 @@ function smaller_cortiostriatal_learning_run(;time_block_dur = 90.0, ## ms (size
         @named agent = Agent(g; t_block = time_block_dur, N_t_block); ## define agent
         print("Construction:  "); 
     end
-    trace = run_experiment!(agent, env; t_warmup=200.0, alg=Vern7(), verbose=true, save_everystep=false)
+    #trace = run_experiment!(agent, env; t_warmup=200.0, alg=Vern7(), verbose=true, save_everystep=false)
+    agent.problem
 end
 
 
-function big_cortiocostriatal_learning_run()
-    time_block_dur = 90 # ms (size of discrete time blocks)
-    N_trials = 700 #number of trials
+function big_cortiocostriatal_learning_run(; sta_thal=true, scheduler=SerialScheduler(),
+                                           time_block_dur = 90, # ms (size of discrete time blocks)
+                                           N_trials = 700, #number of trials
+                                           )
     @time begin
 	    fn = joinpath(@__DIR__, "stimuli_set_big.csv") #stimulus image file
         
@@ -98,7 +100,7 @@ function big_cortiocostriatal_learning_run()
         @named STR1 = Striatum(N_inhib=25) 
 	    @named STR2 = Striatum(N_inhib=25)
 	    
-	    @named tan_nrn = HHExci() 
+	    @named tan_nrn = HHExci()
 	    
 	    @named gpi1 = GPi(N_inhib=25) 
 	    @named gpi2 = GPi(N_inhib=25) 
@@ -140,8 +142,9 @@ function big_cortiocostriatal_learning_run()
 	    add_edge!(g, STR2, gpi2; weight = 4, density = 0.04) #str2->gpi2
 	    add_edge!(g, gpi1, Thal1; weight = 0.16, density = 0.04) #gpi1->thal1
 	    add_edge!(g, gpi2, Thal2; weight = 0.16, density = 0.04) #gpi2->thal2
-        add_edge!(g, Thal1, PFC; weight = 0.2, density = 0.32, learning_rule = hebbian_thal_cort, sta = true) #thal1->pfc
-	    add_edge!(g, Thal2, PFC; weight = 0.2, density = 0.32, learning_rule = hebbian_thal_cort, sta = true) #thal2->pfc
+        add_edge!(g, Thal1, PFC; weight = 0.2, density = 0.32, learning_rule = hebbian_thal_cort, sta=sta_thal) #thal1->pfc
+	    add_edge!(g, Thal2, PFC; weight = 0.2, density = 0.32, learning_rule = hebbian_thal_cort, sta=sta_thal) #thal2->pfc
+        # @warn "Disabling STA connections!"
 	    add_edge!(g, STR1, gpe1; weight = 4, density = 0.04)   #str1->gpe1
 	    add_edge!(g, STR2, gpe2; weight = 4.0, density = 0.04) #str2->gpe2
 	    add_edge!(g, gpe1, gpi1; weight = 0.2, density = 0.04) #gpe1->gpi1
@@ -168,10 +171,10 @@ function big_cortiocostriatal_learning_run()
         @named env = ClassificationEnvironment(stim, N_trials)
         t_block = 90
         N_t_block=round(Int, env.t_trial/t_block, RoundUp)
-        @named agent = Agent(g; t_block, N_t_block);
+        @named agent = Agent(g; t_block, N_t_block, scheduler);
         print("Construction:  "); 
     end 
-    agent
+    #agent
     @time run_experiment!(agent, env; alg=Vern7(), t_warmup=800.0, save_everystep=false, verbose=true)
 end
 

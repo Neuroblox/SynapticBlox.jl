@@ -94,6 +94,12 @@ using DiffEqCallbacks:
     DiffEqCallbacks,
     PeriodicCallback
 
+using ProgressMeter:
+    ProgressMeter,
+    Progress,
+    next!,
+    finish!
+
 abstract type AbstractBlox end
 abstract type AbstractExciNeuronBlox <: AbstractBlox end
 abstract type AbstractInhiNeuronBlox <: AbstractBlox end
@@ -114,6 +120,7 @@ include("composite_structures.jl")
 include("sources.jl")
 include("connections.jl")
 include("learning_structures.jl")
+include("reinforcement_learning.jl")
 include("graph_dynamics_interop.jl")
 
 
