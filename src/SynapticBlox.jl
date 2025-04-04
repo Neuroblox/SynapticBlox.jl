@@ -3,6 +3,7 @@ module SynapticBlox
 
 using Base: @kwdef
 using Base.Iterators: map as imap
+using Base.Cartesian: @nexprs
 
 using Graphs:
     Graphs,

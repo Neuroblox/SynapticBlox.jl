@@ -13,14 +13,19 @@ function run_experiment!(agent::Agent, env::ClassificationEnvironment; t_warmup=
     end
     trace = @NamedTuple{trial::Int, iscorrect::Bool, action::Int, time::Float64}[]
     prog = Progress(N_trials; showspeed=true, enabled=verbose)
-    for trial ∈ 1:N_trials
-        (;time, gctime) = @timed begin
-            _, iscorrect, action = @noinline run_trial!(agent, env; kwargs...)
+    try
+        for trial ∈ 1:N_trials
+            (;time, gctime) = @timed begin
+                _, iscorrect, action = @noinline run_trial!(agent, env; kwargs...)
+            end
+            push!(trace, (;trial, iscorrect, action, time))            
+            next!(prog, showvalues=showvalues(;trace, N_trials))
         end
-        push!(trace, (;trial, iscorrect, action, time))            
-        next!(prog, showvalues=showvalues(;trace, N_trials))
+    catch e;
+        @warn "Error during run_experiment! Terminating early" e
+    finally
+        finish!(prog)
     end
-    finish!(prog)
     trace
 end
 
@@ -96,7 +101,13 @@ end
 
 function apply_learning_rules!(sol, prob, learning_rules, feedback)
     (;connection_matrices, params_partitioned) = prob.p
-    min_Δw, max_Δw = 0.0, 0.0
+    _apply_learning_rules!(sol, params_partitioned, connection_matrices, learning_rules, feedback)
+end
+function _apply_learning_rules!(sol,
+                                params_partitioned::NTuple{Len, Any},
+                                connection_matrices::ConnectionMatrices{NConn},
+                                learning_rules::ConnectionMatrices{NLearn},
+                                feedback) where {Len, NConn, NLearn}
     for i ∈ eachindex(params_partitioned)
         for k ∈ eachindex(params_partitioned)
             for ncl ∈ 1:length(learning_rules)

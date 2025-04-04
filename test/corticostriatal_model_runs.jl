@@ -18,66 +18,64 @@ function smaller_cortiostriatal_learning_run(;time_block_dur = 90.0, ## ms (size
     # download the stimulus images
     #image_set = joinpath(@__DIR__, "image_example.csv") #stimulus image file
     @time begin
-    image_set = joinpath(@__DIR__, "stimuli_set_small.csv")
-    #CSV.File(Downloads.download("raw.githubusercontent.com/Neuroblox/NeurobloxDocsHost/refs/heads/main/data/stimuli_set.csv")) ## reading data into DataFrame format
+        image_set = joinpath(@__DIR__, "stimuli_set_small.csv")
+        #CSV.File(Downloads.download("raw.githubusercontent.com/Neuroblox/NeurobloxDocsHost/refs/heads/main/data/stimuli_set.csv")) ## reading data into DataFrame format
 
-    # define stimulus Blox
-    # t_stimulus: how long the stimulus is on (in ms)
-    # t_pause : how long the stimulus is off (in ms)
-    @named stim = ImageStimulus(image_set;  t_stimulus=trial_dur, t_pause=0);
+        # define stimulus Blox
+        # t_stimulus: how long the stimulus is on (in ms)
+        # t_pause : how long the stimulus is off (in ms)
+        @named stim = ImageStimulus(image_set;  t_stimulus=trial_dur, t_pause=0);
 
-    # Cortical Bloxs
-    @named VAC = CorticalBlox(;  N_l_flic=4, N_exci=5,  density=0.05, weight=1)
-    @named AC = CorticalBlox(;  N_l_flic=2, N_exci=5, density=0.05, weight=1)
-    # ascending system Blox, modulating frequency set to 16 Hz
-    @named ASC1 = NGNMM_theta(;  Cₑ=2*26,Cᵢ=1*26, alpha_invₑₑ=10.0/26, alpha_invₑᵢ=0.8/26, alpha_invᵢₑ=10.0/26, alpha_invᵢᵢ=0.8/26, kₑᵢ=0.6*26, kᵢₑ=0.6*26)
+        # Cortical Bloxs
+        @named VAC = CorticalBlox(;  N_l_flic=4, N_exci=5,  density=0.05, weight=1)
+        @named AC = CorticalBlox(;  N_l_flic=2, N_exci=5, density=0.05, weight=1)
+        # ascending system Blox, modulating frequency set to 16 Hz
+        @named ASC1 = NGNMM_theta(;  Cₑ=2*26,Cᵢ=1*26, alpha_invₑₑ=10.0/26, alpha_invₑᵢ=0.8/26, alpha_invᵢₑ=10.0/26, alpha_invᵢᵢ=0.8/26, kₑᵢ=0.6*26, kᵢₑ=0.6*26)
 
-    # additional Striatum Bloxs
-    @named STR1 = Striatum(;  N_inhib=5)
-    @named STR2 = Striatum(;  N_inhib=5)
+        # additional Striatum Bloxs
+        @named STR1 = Striatum(;  N_inhib=5)
+        @named STR2 = Striatum(;  N_inhib=5)
 
-    @named tan_pop1 = TAN(κ=10; )
-    @named tan_pop2 = TAN(κ=10; )
+        @named tan_pop1 = TAN(κ=10; )
+        @named tan_pop2 = TAN(κ=10; )
 
-    @named SNcb = SNc(κ_DA=1; )
+        @named SNcb = SNc(κ_DA=1; )
 
-    # action selection Blox, necessary for making a choice
-    @named AS = GreedyPolicy(;  t_decision=2*time_block_dur)
+        # action selection Blox, necessary for making a choice
+        @named AS = GreedyPolicy(;  t_decision=2*time_block_dur)
 
-    # learning rules
-    hebbian_mod = HebbianModulationPlasticity(K=0.06, decay=0.01, α=2.5, θₘ=1, modulator=SNcb, t_pre=trial_dur, t_post=trial_dur, t_mod=time_block_dur)
-    hebbian_cort = HebbianPlasticity(K=5e-4, W_lim=7, t_pre=trial_dur, t_post=trial_dur)
+        # learning rules
+        hebbian_mod = HebbianModulationPlasticity(K=0.06, decay=0.01, α=2.5, θₘ=1, modulator=SNcb, t_pre=trial_dur, t_post=trial_dur, t_mod=time_block_dur)
+        hebbian_cort = HebbianPlasticity(K=5e-4, W_lim=7, t_pre=trial_dur, t_post=trial_dur)
 
-    g = Neurograph()
+        g = Neurograph()
 
-    add_edge!(g, stim => VAC, weight=14)
-    add_edge!(g, ASC1 => VAC, weight=44)
-    add_edge!(g, ASC1 => AC, weight=44)
-    add_edge!(g, VAC => AC, weight=3, density=0.1, learning_rule = hebbian_cort)
-    add_edge!(g, AC => STR1, weight = 0.075, density =  0.04, learning_rule =  hebbian_mod)
-    add_edge!(g, AC => STR2, weight =  0.075, density =  0.04, learning_rule =  hebbian_mod)
-    add_edge!(g, tan_pop1 => STR1, weight = 1, t_event = time_block_dur)
-    add_edge!(g, tan_pop2 => STR2, weight = 1, t_event = time_block_dur)
-    add_edge!(g, STR1 => tan_pop1, weight = 1)
-    add_edge!(g, STR2 => tan_pop1, weight = 1)
-    add_edge!(g, STR1 => tan_pop2, weight = 1)
-    add_edge!(g, STR2 => tan_pop2, weight = 1)
-    add_edge!(g, STR1 => STR2, weight = 1, t_event = 2*time_block_dur)
-    add_edge!(g, STR2 => STR1, weight = 1, t_event = 2*time_block_dur)
-    add_edge!(g, STR1 => SNcb, weight = 1)
-    add_edge!(g, STR2 => SNcb, weight = 1)
-    # action selection connections
-    add_edge!(g, STR1 => AS);
-    add_edge!(g, STR2 => AS);
+        add_edge!(g, stim => VAC, weight=14)
+        add_edge!(g, ASC1 => VAC, weight=44)
+        add_edge!(g, ASC1 => AC, weight=44)
+        add_edge!(g, VAC => AC, weight=3, density=0.1, learning_rule = hebbian_cort)
+        add_edge!(g, AC => STR1, weight = 0.075, density =  0.04, learning_rule =  hebbian_mod)
+        add_edge!(g, AC => STR2, weight =  0.075, density =  0.04, learning_rule =  hebbian_mod)
+        add_edge!(g, tan_pop1 => STR1, weight = 1, t_event = time_block_dur)
+        add_edge!(g, tan_pop2 => STR2, weight = 1, t_event = time_block_dur)
+        add_edge!(g, STR1 => tan_pop1, weight = 1)
+        add_edge!(g, STR2 => tan_pop1, weight = 1)
+        add_edge!(g, STR1 => tan_pop2, weight = 1)
+        add_edge!(g, STR2 => tan_pop2, weight = 1)
+        add_edge!(g, STR1 => STR2, weight = 1, t_event = 2*time_block_dur)
+        add_edge!(g, STR2 => STR1, weight = 1, t_event = 2*time_block_dur)
+        add_edge!(g, STR1 => SNcb, weight = 1)
+        add_edge!(g, STR2 => SNcb, weight = 1)
+        # action selection connections
+        add_edge!(g, STR1 => AS);
+        add_edge!(g, STR2 => AS);
 
-    @named env = ClassificationEnvironment(stim, N_trials)
-    
-    N_t_block=round(Int, env.t_trial/time_block_dur, RoundUp)
-        @named agent = Agent(g; t_block = time_block_dur, N_t_block); ## define agent
+        @named env = ClassificationEnvironment(stim, N_trials)
+        @named agent = Agent(g; t_block = time_block_dur); ## define agent
         print("Construction:  "); 
     end
-    #trace = run_experiment!(agent, env; t_warmup=200.0, alg=Vern7(), verbose=true, save_everystep=false)
     agent.problem
+    trace = run_experiment!(agent, env; t_warmup=200.0, alg=Vern7(), verbose=true, save_everystep=false)
 end
 
 
@@ -167,12 +165,10 @@ function big_cortiocostriatal_learning_run(; sta_thal=true, scheduler=SerialSche
 	    add_edge!(g, STR1, SNcb; weight = 1.0) # str1->Snc
         add_edge!(g, STR2, SNcb; weight = 1.0)  # str2->Snc
 
-
         @named env = ClassificationEnvironment(stim, N_trials)
         t_block = 90
-        N_t_block=round(Int, env.t_trial/t_block, RoundUp)
-        @named agent = Agent(g; t_block, N_t_block, scheduler);
-        print("Construction:  "); 
+        @named agent = Agent(g; t_block, scheduler);
+        print("Construction:  ");
     end 
     #agent
     @time run_experiment!(agent, env; alg=Vern7(), t_warmup=800.0, save_everystep=false, verbose=true)

@@ -80,10 +80,7 @@ function weight_gradient(hmp::HebbianModulationPlasticity, sol, w, feedback)
 end
 
 get_eval_times(l::HebbianModulationPlasticity) = (l.t_pre, l.t_post, l.t_mod)
-
 get_eval_states(l::HebbianModulationPlasticity) = (l.state_pre, l.state_post, get_modulator_state(l.modulator))
-
-
 
 mutable struct ClassificationEnvironment{S} <: AbstractEnvironment
     const name::Symbol
@@ -161,11 +158,19 @@ struct Agent{S,P,A,LR,CM}
     learning_rules::LR
     connection_matrices::CM
 end
-function Agent(g::Neurograph; name, t_block=missing, N_t_block=1, u0=[], p=[], kwargs...)
+function Agent(g::Neurograph; name, t_block=missing, u0=[], p=[], kwargs...)
     #TODO: calculate the number of t_blocks or make a periodic event!
     
     # TODO: add another version that uses system_from_graph(g,bc,params;)
-    sys = graphsystem_from_graph(g; t_block, N_t_block)
+
+    if !ismissing(t_block)
+        global_events=[PeriodicCallback(t_block_event(:t_block_early), t_block - √(eps(float(t_block)))),
+                       PeriodicCallback(t_block_event(:t_block_late), t_block  +2*√(eps(float(t_block))))]
+    else
+        global_events=[]
+    end
+    
+    sys = graphsystem_from_graph(g; global_events)
     prob = ODEProblem(sys, u0, (0.,1.), p; kwargs...)
     policy = action_selection_from_graph(g)
     learning_rules = sys.extra_params.learning_rules

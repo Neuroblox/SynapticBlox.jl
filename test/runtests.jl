@@ -19,7 +19,7 @@ end
 include("./corticostriatal_model_runs.jl")
 
 @testset "Cortical Striatal model" begin
-    trace = smaller_cortiostriatal_learning_run(N_trials=200)
+    trace = smaller_cortiostriatal_learning_run(N_trials=500)[100:end]
     accuracy = sum(row -> row.iscorrect, trace)/length(trace)
-    @test accuracy >= 0.65
+    @test accuracy >= 0.7
 end

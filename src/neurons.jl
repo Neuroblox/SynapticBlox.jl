@@ -71,7 +71,7 @@ default_synapse(n::HHExci; E_syn=n.E_syn, τ₁=0.1, τ₂=n.τ, kwargs...) =
     Glu_AMPA_Synapse(;name=Symbol("$(n.name)_synapse"), E_syn, τ₁, τ₂, kwargs...)
 
 has_t_block_event(::Type{HHExci}) = true
-is_t_block_event_time(::Type{HHExci}, (; t_block3), t) = t == t_block3
+is_t_block_event_time(::Type{HHExci}, key, t) = key == :t_block_late
 t_block_event_requires_inputs(::Type{HHExci}) = false
 function apply_t_block_event!(vstates, _, s::Subsystem{HHExci}, _, _)
     vstates[:spikes_window] = 0.0

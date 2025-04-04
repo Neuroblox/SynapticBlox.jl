@@ -1,4 +1,4 @@
-function graphsystem_from_graph(g::Neurograph; t_block=missing, name=nothing, N_t_block=1)
+function graphsystem_from_graph(g::Neurograph; t_block=missing, name=nothing, global_events=())
     g_flat = Neurograph()
     for blox ∈ vertices(g)
         blox_wiring_rule!(g_flat, blox; is_flattening=true)
@@ -159,27 +159,8 @@ function graphsystem_from_graph(g::Neurograph; t_block=missing, name=nothing, N_
     connection_matrices = make_connection_matrices(:conn)
     learning_rules      = make_connection_matrices(:learning_rule; pred=(x) -> !(x isa NoLearningRule))
 
-    # if !ismissing(t_block)
-    #     global_events=PeriodicCallback()
-    # end
-    composite_discrete_events_partitioned = if !ismissing(t_block)
-        (map(n -> TBlockEvent(n*t_block), 1:N_t_block),)
-    else
-        nothing
-    end
-    if !isnothing(composite_discrete_events_partitioned)
-        for v ∈ composite_discrete_events_partitioned
-            for ev ∈ v
-                for t ∈ event_times(ev)
-                    push!(tstops, t)
-                end
-            end
-        end
-    end
-    
+    composite_discrete_events_partitioned = nothing
     composite_continuous_events_partitioned = nothing
-
-
     
     subsystems_partitioned = (Tuple ∘ map)(v -> map(to_subsystem, v), blox_partitioned)
     states_partitioned = (Tuple ∘ map)(v -> map(get_states, v), subsystems_partitioned)
@@ -203,6 +184,7 @@ function graphsystem_from_graph(g::Neurograph; t_block=missing, name=nothing, N_
                  tstops=unique!(tstops),
                  composite_discrete_events_partitioned,
                  composite_continuous_events_partitioned,
+                 global_events,
                  names_partitioned,
                  extra_params)
     
@@ -213,37 +195,31 @@ function graphsystem_from_graph(g::Neurograph; t_block=missing, name=nothing, N_
     end
 end
 
-struct TBlockEvent{NT <: NamedTuple}
-    event_times::NT
-end
-TBlockEvent(t_block) = TBlockEvent(float(t_block))
-TBlockEvent(t_block::Float64) = TBlockEvent((t_block0 = t_block-√(eps(t_block)),
-                                             t_block1 = t_block + 0.0,
-                                             t_block2 = t_block+√(eps(t_block)),
-                                             t_block3 = t_block+2*√(eps(t_block))))
 
-GraphDynamics.event_times(ev::TBlockEvent) = ev.event_times
-GraphDynamics.discrete_event_condition(_, _, _, ev::TBlockEvent, t) = (t ∈ ev.event_times)
-function GraphDynamics.apply_discrete_event!(integrator,
-                                             states_partitioned::NTuple{Len, Any},
-                                             params_partitioned::NTuple{Len, Any},
-                                             connection_matrices::ConnectionMatrices{NConn},
-                                             t,
-                                             ev::TBlockEvent) where {Len, NConn}
-    for i ∈ 1:Len
-        states_partitioned_i = states_partitioned[i]
-        params_partitioned_i = params_partitioned[i]
-        tag = get_tag(eltype(states_partitioned_i))
-        if has_t_block_event(tag)
-            if is_t_block_event_time(tag, ev.event_times, t)
-                for j ∈ eachindex(states_partitioned_i)
-                    sys_dst = Subsystem(states_partitioned_i[j], params_partitioned_i[j])
-                    if t_block_event_requires_inputs(tag)
-                        input = calculate_inputs(Val(i), j, states_partitioned, params_partitioned, connection_matrices, t)
-                    else
-                        input = initialize_input(sys_dst)
+function t_block_event(key)
+    function _apply_t_block_event!(integrator)
+        (; params_partitioned, connection_matrices, partition_plan) = integrator.p
+        states_partitioned = partitioned(integrator.u, partition_plan)
+        t = integrator.t
+        # Some t_block events need to happen before others, so we split them into two categories: 'early' and 'late'.
+        # the old implementation did this as separate events, but here we can just force the early ones to happen before
+        # the late ones without having to have extra events.
+
+        for i ∈ eachindex(states_partitioned)
+            states_partitioned_i = states_partitioned[i]
+            params_partitioned_i = params_partitioned[i]
+            tag = get_tag(eltype(states_partitioned_i))
+            if has_t_block_event(tag)
+                if is_t_block_event_time(tag, key, t)
+                    for j ∈ eachindex(states_partitioned_i)
+                        sys_dst = Subsystem(states_partitioned_i[j], params_partitioned_i[j])
+                        if t_block_event_requires_inputs(tag)
+                            input = calculate_inputs(Val(i), j, states_partitioned, params_partitioned, connection_matrices, t)
+                        else
+                            input = initialize_input(sys_dst)
+                        end
+                        apply_t_block_event!(@view(states_partitioned_i[j]), @view(params_partitioned_i[j]), sys_dst, input, t)
                     end
-                    apply_t_block_event!(@view(states_partitioned_i[j]), @view(params_partitioned_i[j]), sys_dst, input, t)
                 end
             end
         end
@@ -253,13 +229,3 @@ end
 has_t_block_event(::Type{Union{}}) = error("Something went very wrong. This error should only exist for method disambiguation")
 t_block_event_requires_inputs(::Type{Union{}}) = error("Something went very wrong. This error should only exist for method disambiguation")
 has_t_block_event(::Type{T}) where {T} = false
-
-
-# function make_periodic_t_block_event(_t_block)
-#     t_block = float(_t_block)
-#     map(-1:2) do n
-#         PeriodicCallback(t_block, t_block, phase=n*√(eps(t_block))) do integrator
-            
-#         end
-#     end 
-# end
