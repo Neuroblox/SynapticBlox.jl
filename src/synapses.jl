@@ -12,7 +12,7 @@ for S ∈ ("GABA_A", "GABA_B")
         end
 
         # Convert a synapse of type $T to a GraphDynamics.Subsystem
-        function to_subsystem((;name, E_syn, #G_syn, V_shift, V_range,
+        function GraphDynamics.to_subsystem((;name, E_syn, #G_syn, V_shift, V_range,
                                τ₁, τ₂, g)::$T)
             states = SubsystemStates{$T}(G=0.0, z=0.0)
             params = SubsystemParams{$T}(;name, E_syn, #G_syn, V_shift, V_range,
@@ -50,7 +50,7 @@ end
 end
 
 # Convert a synapse of type $T to a GraphDynamics.Subsystem
-function to_subsystem((;name, E_syn, #G_syn, V_shift, V_range, spk_const,
+function GraphDynamics.to_subsystem((;name, E_syn, #G_syn, V_shift, V_range, spk_const,
                        τ₁, τ₂, g)::Glu_AMPA_Synapse)
     states = SubsystemStates{Glu_AMPA_Synapse}(G=0.0, z=0.0)
     params = SubsystemParams{Glu_AMPA_Synapse}(;name, E_syn, τ₁, τ₂, g)
@@ -82,7 +82,7 @@ end
 end
 
 # Convert a synapse of type $T to a GraphDynamics.Subsystem
-function to_subsystem((;name, E_syn, τ₁, τ₂, τ₃, τ₄, kₛₜₚ, g)::Glu_AMPA_STA_Synapse)
+function GraphDynamics.to_subsystem((;name, E_syn, τ₁, τ₂, τ₃, τ₄, kₛₜₚ, g)::Glu_AMPA_STA_Synapse)
     states = SubsystemStates{Glu_AMPA_STA_Synapse}(
         G=0.0,
         z=0.0,

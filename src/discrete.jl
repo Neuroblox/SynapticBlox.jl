@@ -25,7 +25,7 @@ end
     t_event::Float64=180
 end
 
-function to_subsystem(m::Matrisome)
+function GraphDynamics.to_subsystem(m::Matrisome)
     # Default state initial values
     states = SubsystemStates{Matrisome}()
     # Parameter values
@@ -70,7 +70,7 @@ end
     H::Int=1
     jcn_t_block::Float64=0.0
 end
-function to_subsystem(s::Striosome)
+function GraphDynamics.to_subsystem(s::Striosome)
     # Default state initial values
     states = SubsystemStates{Striosome}()
     # Parameter values
@@ -100,7 +100,7 @@ end
     λ::Float64=1
     jcn_t_block::Float64=0.0
 end
-function to_subsystem(s::TAN)
+function GraphDynamics.to_subsystem(s::TAN)
     # Default state initial values
     states = SubsystemStates{TAN}()
     # Parameter values
@@ -133,7 +133,7 @@ end
     jcn_snapshot::Float64 = 0.0
     t_event::Float64 = 90
 end
-function to_subsystem(s::SNc)
+function GraphDynamics.to_subsystem(s::SNc)
     # Default state initial values
     states = SubsystemStates{SNc}()
     # Parameter values

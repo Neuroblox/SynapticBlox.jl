@@ -25,7 +25,7 @@ end
     kᵢᵢ=0
 end
 
-function to_subsystem(nm::NGNMM_theta)
+function GraphDynamics.to_subsystem(nm::NGNMM_theta)
     # Default state initial values
     states = SubsystemStates{NGNMM_theta}(
         aₑ=-0.6,

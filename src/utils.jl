@@ -35,8 +35,8 @@ function get_connection_matrix(name_src, name_dst, N_out, N_in; kwargs...)
     connection_matrix
 end
 
-get_exci_neurons(blox_src::CompositeBlox) = [blox for blox ∈ vertices(blox_src.graph) if blox isa HHExci]
-get_inhi_neurons(blox_src::CompositeBlox) = [blox for blox ∈ vertices(blox_src.graph) if blox isa HHInhi]
+get_exci_neurons(blox_src::CompositeBlox) = [blox for blox ∈ nodes(blox_src.graph) if blox isa HHExci]
+get_inhi_neurons(blox_src::CompositeBlox) = [blox for blox ∈ nodes(blox_src.graph) if blox isa HHInhi]
 
 function get_density(kwargs, name_src, name_dst)
     density = get(kwargs, :density) do

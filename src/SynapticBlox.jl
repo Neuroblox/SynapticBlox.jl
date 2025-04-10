@@ -1,28 +1,8 @@
 module SynapticBlox
 
-
 using Base: @kwdef
 using Base.Iterators: map as imap
 using Base.Cartesian: @nexprs
-
-using Graphs:
-    Graphs,
-    AbstractEdge,
-    add_edge!,
-    edges,
-    vertices,
-    add_vertex!,
-    add_edge!,
-    src,
-    dst,
-    has_edge
-
-using MetaGraphs:
-    MetaGraphs,
-    MetaDiGraph,
-    AbstractMetaGraph,
-    props,
-    set_prop!
 
 using OrderedCollections:
     OrderedCollections,
@@ -34,8 +14,8 @@ using GraphDynamics:
     ConnectionRule,
     ConnectionMatrices,
     ConnectionMatrix,
-    SDEGraphSystem,
-    ODEGraphSystem,
+    PartitionedGraphSystem,
+    GraphSystem,
     initialize_input,
     subsystem_differential,
     Subsystem,
@@ -48,7 +28,15 @@ using GraphDynamics:
     get_params,
     calculate_inputs,
     partitioned,
-    maybe_sparse_enumerate_col
+    maybe_sparse_enumerate_col,
+    calculate_inputs,
+    to_subsystem,
+    nodes,
+    connect!,
+    connections,
+    has_connection,
+    system_wiring_rule!,
+    make_connection_matrices
 
 using Accessors:
     Accessors,
@@ -112,7 +100,6 @@ abstract type AbstractEnvironment end
 abstract type AbstractLearningRule end
 
 include("utils.jl")
-include("neurographs.jl")
 include("neurons.jl")
 include("neural_mass.jl")
 include("synapses.jl")
@@ -122,14 +109,12 @@ include("sources.jl")
 include("connections.jl")
 include("learning_structures.jl")
 include("reinforcement_learning.jl")
-include("graph_dynamics_interop.jl")
 
 
 export
-    Neurograph,
-    add_vertex!,
-    add_edge!,
-    graphsystem_from_graph
+    GraphSystem,
+    add_node!,
+    connect!
 
 export
     HHExci,
