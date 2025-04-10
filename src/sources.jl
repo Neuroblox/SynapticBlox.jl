@@ -32,7 +32,7 @@ function ImageStimulus(file::String; name,  t_stimulus, t_pause)
     ImageStimulus(data; name,  t_stimulus, t_pause)
 end
 
-function to_subsystem(s::ImageStimulus)
+function GraphDynamics.to_subsystem(s::ImageStimulus)
     states = SubsystemStates{ImageStimulus}()
     (; name, current_image, IMG, category, t_stimulus, t_pause, N_pixels, N_stimuli) = s
     params = SubsystemParams{ImageStimulus}(; name, current_image, IMG, category, t_stimulus, t_pause, N_pixels, N_stimuli)

@@ -1,7 +1,7 @@
 name = "SynapticBlox"
 uuid = "ede63845-7bad-426c-8c3f-3550706e68a5"
 authors = ["Mason Protter <mason.protter@icloud.com>"]
-version = "0.1.0"
+version = "0.2.0"
 
 [deps]
 Accessors = "7d9f7c33-5ae7-4f3b-8dc6-eff91059b697"
@@ -32,7 +32,7 @@ Accessors = "0.1.41"
 CSV = "0.10.15"
 DiffEqCallbacks = "4.3.0"
 Distributions = "0.25.118"
-GraphDynamics = "0.2.14"
+GraphDynamics = "0.3"
 Graphs = "1.12.0"
 LogExpFunctions = "0.3.29"
 MacroTools = "0.5.15"

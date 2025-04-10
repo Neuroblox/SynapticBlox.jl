@@ -122,11 +122,11 @@ struct GreedyPolicy <: AbstractActionSelection
     end
 end
 
-function blox_wiring_rule!(g, ::AbstractActionSelection; kwargs...)
+function GraphDynamics.system_wiring_rule!(g::GraphSystem, ::AbstractActionSelection; kwargs...)
     #@info "Skipping the wiring of an ActionSelection"
     nothing
 end
-function blox_wiring_rule!(g, blox_src, ::AbstractActionSelection; kwargs...)
+function GraphDynamics.system_wiring_rule!(g::GraphSystem, blox_src::AbstractBlox, ::AbstractActionSelection; kwargs...)
     # @info "Skipping the wiring of an ActionSelection"
     nothing
 end
@@ -158,11 +158,7 @@ struct Agent{S,P,A,LR,CM}
     learning_rules::LR
     connection_matrices::CM
 end
-function Agent(g::Neurograph; name, t_block=missing, u0=[], p=[], kwargs...)
-    #TODO: calculate the number of t_blocks or make a periodic event!
-    
-    # TODO: add another version that uses system_from_graph(g,bc,params;)
-
+function Agent(g::GraphSystem; name, t_block=missing, u0=[], p=[], kwargs...)
     if !ismissing(t_block)
         global_events=[PeriodicCallback(t_block_event(:t_block_early), t_block - √(eps(float(t_block)))),
                        PeriodicCallback(t_block_event(:t_block_late), t_block  +2*√(eps(float(t_block))))]
@@ -170,22 +166,25 @@ function Agent(g::Neurograph; name, t_block=missing, u0=[], p=[], kwargs...)
         global_events=[]
     end
     
-    sys = graphsystem_from_graph(g; global_events)
-    prob = ODEProblem(sys, u0, (0.,1.), p; kwargs...)
+    # sys = graphsystem_from_graph(g; global_events)
+    sys_par = PartitionedGraphSystem(g)
+    prob = ODEProblem(g, u0, (0.,1.), p; global_events, kwargs...)
     policy = action_selection_from_graph(g)
-    learning_rules = sys.extra_params.learning_rules
+    learning_rules = make_connection_matrices(sys_par.flat_graph,
+                                              conn_key=:learning_rule,
+                                              pred=(x) -> !(x isa NoLearningRule)).connection_matrices
     conn = prob.p.connection_matrices
-    Agent(sys, prob, policy, learning_rules, conn)
+    Agent(g, prob, policy, learning_rules, conn)
 end
 
-function action_selection_from_graph(g::Neurograph)
-    sels = [blox for blox in vertices(g) if blox isa AbstractActionSelection]
+function action_selection_from_graph(g::GraphSystem)
+    sels = [blox for blox in nodes(g) if blox isa AbstractActionSelection]
     if isempty(sels)
         @warn "No action selection provided"
     elseif length(sels) == 1
         sel = only(sels)
         srcs = []
-        for (;src, dst) ∈ edges(g)
+        for (;src, dst) ∈ connections(g)
             if dst == sel
                 push!(srcs, src)
             end

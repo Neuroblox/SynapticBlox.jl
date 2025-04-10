@@ -16,7 +16,7 @@
     default_synapses::Set=Set()
 end
 
-function to_subsystem(h::HHExci)
+function GraphDynamics.to_subsystem(h::HHExci)
     # Default state initial values
     states = SubsystemStates{HHExci}(
         V = -65.0,
@@ -94,7 +94,7 @@ end
     default_synapses::Set=Set()
 end
 
-function to_subsystem(h::HHInhi)
+function GraphDynamics.to_subsystem(h::HHInhi)
     states = SubsystemStates{HHInhi}((
         V = -65.0,
         n = 0.32,

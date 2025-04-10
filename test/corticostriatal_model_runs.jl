@@ -48,27 +48,27 @@ function smaller_cortiostriatal_learning_run(;time_block_dur = 90.0, ## ms (size
         hebbian_mod = HebbianModulationPlasticity(K=0.06, decay=0.01, α=2.5, θₘ=1, modulator=SNcb, t_pre=trial_dur, t_post=trial_dur, t_mod=time_block_dur)
         hebbian_cort = HebbianPlasticity(K=5e-4, W_lim=7, t_pre=trial_dur, t_post=trial_dur)
 
-        g = Neurograph()
+        g = GraphSystem()
 
-        add_edge!(g, stim => VAC, weight=14)
-        add_edge!(g, ASC1 => VAC, weight=44)
-        add_edge!(g, ASC1 => AC, weight=44)
-        add_edge!(g, VAC => AC, weight=3, density=0.1, learning_rule = hebbian_cort)
-        add_edge!(g, AC => STR1, weight = 0.075, density =  0.04, learning_rule =  hebbian_mod)
-        add_edge!(g, AC => STR2, weight =  0.075, density =  0.04, learning_rule =  hebbian_mod)
-        add_edge!(g, tan_pop1 => STR1, weight = 1, t_event = time_block_dur)
-        add_edge!(g, tan_pop2 => STR2, weight = 1, t_event = time_block_dur)
-        add_edge!(g, STR1 => tan_pop1, weight = 1)
-        add_edge!(g, STR2 => tan_pop1, weight = 1)
-        add_edge!(g, STR1 => tan_pop2, weight = 1)
-        add_edge!(g, STR2 => tan_pop2, weight = 1)
-        add_edge!(g, STR1 => STR2, weight = 1, t_event = 2*time_block_dur)
-        add_edge!(g, STR2 => STR1, weight = 1, t_event = 2*time_block_dur)
-        add_edge!(g, STR1 => SNcb, weight = 1)
-        add_edge!(g, STR2 => SNcb, weight = 1)
+        connect!(g, stim => VAC, weight=14)
+        connect!(g, ASC1 => VAC, weight=44)
+        connect!(g, ASC1 => AC, weight=44)
+        connect!(g, VAC => AC, weight=3, density=0.1, learning_rule = hebbian_cort)
+        connect!(g, AC => STR1, weight = 0.075, density =  0.04, learning_rule =  hebbian_mod)
+        connect!(g, AC => STR2, weight =  0.075, density =  0.04, learning_rule =  hebbian_mod)
+        connect!(g, tan_pop1 => STR1, weight = 1, t_event = time_block_dur)
+        connect!(g, tan_pop2 => STR2, weight = 1, t_event = time_block_dur)
+        connect!(g, STR1 => tan_pop1, weight = 1)
+        connect!(g, STR2 => tan_pop1, weight = 1)
+        connect!(g, STR1 => tan_pop2, weight = 1)
+        connect!(g, STR2 => tan_pop2, weight = 1)
+        connect!(g, STR1 => STR2, weight = 1, t_event = 2*time_block_dur)
+        connect!(g, STR2 => STR1, weight = 1, t_event = 2*time_block_dur)
+        connect!(g, STR1 => SNcb, weight = 1)
+        connect!(g, STR2 => SNcb, weight = 1)
         # action selection connections
-        add_edge!(g, STR1 => AS);
-        add_edge!(g, STR2 => AS);
+        connect!(g, STR1 => AS);
+        connect!(g, STR2 => AS);
 
         @named env = ClassificationEnvironment(stim, N_trials)
         @named agent = Agent(g; t_block = time_block_dur); ## define agent
@@ -126,44 +126,43 @@ function big_cortiocostriatal_learning_run(; sta_thal=true, scheduler=SerialSche
 	    
 	    hebbian_thal_cort = HebbianPlasticity(K=1.7e-5, W_lim=6, t_pre=1600-eps(), t_post=1600-eps())
 
-
-	    g = Neurograph()
-        add_edge!(g, LC, VC; weight = 44) #LC->VC
-	    add_edge!(g, LC, PFC; weight = 44) #LC->pfc
-	    add_edge!(g, ITN, tan_nrn; weight = 100) #ITN->tan
-	    add_edge!(g, VC, PFC; weight = 1, density = 0.08, learning_rule = hebbian_cort) #VC->pfc
-	    add_edge!(g, PFC, STR1; weight = 0.075, density = 0.04, learning_rule = hebbian_mod) #pfc->str1
-	    add_edge!(g, PFC, STR2; weight = 0.075, density = 0.04, learning_rule = hebbian_mod) #pfc->str2
-	    add_edge!(g, tan_nrn, STR1; weight = 0.17) #tan->str1
-	    add_edge!(g, tan_nrn, STR2; weight = 0.17) #tan->str2
-	    add_edge!(g, STR1, gpi1, weight = 4, density = 0.04) #str1->gpi1
-	    add_edge!(g, STR2, gpi2; weight = 4, density = 0.04) #str2->gpi2
-	    add_edge!(g, gpi1, Thal1; weight = 0.16, density = 0.04) #gpi1->thal1
-	    add_edge!(g, gpi2, Thal2; weight = 0.16, density = 0.04) #gpi2->thal2
-        add_edge!(g, Thal1, PFC; weight = 0.2, density = 0.32, learning_rule = hebbian_thal_cort, sta=sta_thal) #thal1->pfc
-	    add_edge!(g, Thal2, PFC; weight = 0.2, density = 0.32, learning_rule = hebbian_thal_cort, sta=sta_thal) #thal2->pfc
+	    g = GraphSystem()
+        connect!(g, LC, VC; weight = 44) #LC->VC
+	    connect!(g, LC, PFC; weight = 44) #LC->pfc
+	    connect!(g, ITN, tan_nrn; weight = 100) #ITN->tan
+	    connect!(g, VC, PFC; weight = 1, density = 0.08, learning_rule = hebbian_cort) #VC->pfc
+	    connect!(g, PFC, STR1; weight = 0.075, density = 0.04, learning_rule = hebbian_mod) #pfc->str1
+	    connect!(g, PFC, STR2; weight = 0.075, density = 0.04, learning_rule = hebbian_mod) #pfc->str2
+	    connect!(g, tan_nrn, STR1; weight = 0.17) #tan->str1
+	    connect!(g, tan_nrn, STR2; weight = 0.17) #tan->str2
+	    connect!(g, STR1, gpi1, weight = 4, density = 0.04) #str1->gpi1
+	    connect!(g, STR2, gpi2; weight = 4, density = 0.04) #str2->gpi2
+	    connect!(g, gpi1, Thal1; weight = 0.16, density = 0.04) #gpi1->thal1
+	    connect!(g, gpi2, Thal2; weight = 0.16, density = 0.04) #gpi2->thal2
+        connect!(g, Thal1, PFC; weight = 0.2, density = 0.32, learning_rule = hebbian_thal_cort, sta=sta_thal) #thal1->pfc
+	    connect!(g, Thal2, PFC; weight = 0.2, density = 0.32, learning_rule = hebbian_thal_cort, sta=sta_thal) #thal2->pfc
         # @warn "Disabling STA connections!"
-	    add_edge!(g, STR1, gpe1; weight = 4, density = 0.04)   #str1->gpe1
-	    add_edge!(g, STR2, gpe2; weight = 4.0, density = 0.04) #str2->gpe2
-	    add_edge!(g, gpe1, gpi1; weight = 0.2, density = 0.04) #gpe1->gpi1
-	    add_edge!(g, gpe2, gpi2; weight = 0.2, density = 0.04) #gpe2->gpi2
-	    add_edge!(g, gpe1, STN1; weight = 3.5, density = 0.04) #gpe1->stn1
-	    add_edge!(g, gpe2, STN2; weight = 3.5, density = 0.04) #gpe2->stn2
-	    add_edge!(g, STN1, gpi1; weight = 0.1, density = 0.04) #stn1->gpi1
-	    add_edge!(g, STN2, gpi2; weight = 0.1, density = 0.04) #stn2->gpi2
-	    add_edge!(g, stim, VC; weight = 14) #stim->VC
-	    add_edge!(g, tan_pop1, STR1; weight = 1, t_event = 90.0) #TAN pop1 -> str1
-	    add_edge!(g, tan_pop2, STR2; weight = 1, t_event = 90.0) #TAN pop2 -> str2
-	    add_edge!(g, STR1, tan_pop1; weight = 1) #str1 -> TAN pop1 
-	    add_edge!(g, STR2, tan_pop1; weight = 1) #str2 -> TAN pop1
-	    add_edge!(g, STR1, tan_pop2; weight = 1) #str1 -> TAN pop2 
-	    add_edge!(g, STR2, tan_pop2; weight = 1) #str2 -> TAN pop2
-	    add_edge!(g, STR1, STR2; weight = 1, t_event = 181.0) #str1 -> str2
-	    add_edge!(g, STR2, STR1; weight = 1, t_event = 181.0) #str2 -> str1
-	    add_edge!(g, STR1, AS)# str1->AS
-	    add_edge!(g, STR2, AS)# str2->AS
-	    add_edge!(g, STR1, SNcb; weight = 1.0) # str1->Snc
-        add_edge!(g, STR2, SNcb; weight = 1.0)  # str2->Snc
+	    connect!(g, STR1, gpe1; weight = 4, density = 0.04)   #str1->gpe1
+	    connect!(g, STR2, gpe2; weight = 4.0, density = 0.04) #str2->gpe2
+	    connect!(g, gpe1, gpi1; weight = 0.2, density = 0.04) #gpe1->gpi1
+	    connect!(g, gpe2, gpi2; weight = 0.2, density = 0.04) #gpe2->gpi2
+	    connect!(g, gpe1, STN1; weight = 3.5, density = 0.04) #gpe1->stn1
+	    connect!(g, gpe2, STN2; weight = 3.5, density = 0.04) #gpe2->stn2
+	    connect!(g, STN1, gpi1; weight = 0.1, density = 0.04) #stn1->gpi1
+	    connect!(g, STN2, gpi2; weight = 0.1, density = 0.04) #stn2->gpi2
+	    connect!(g, stim, VC; weight = 14) #stim->VC
+	    connect!(g, tan_pop1, STR1; weight = 1, t_event = 90.0) #TAN pop1 -> str1
+	    connect!(g, tan_pop2, STR2; weight = 1, t_event = 90.0) #TAN pop2 -> str2
+	    connect!(g, STR1, tan_pop1; weight = 1) #str1 -> TAN pop1 
+	    connect!(g, STR2, tan_pop1; weight = 1) #str2 -> TAN pop1
+	    connect!(g, STR1, tan_pop2; weight = 1) #str1 -> TAN pop2 
+	    connect!(g, STR2, tan_pop2; weight = 1) #str2 -> TAN pop2
+	    connect!(g, STR1, STR2; weight = 1, t_event = 181.0) #str1 -> str2
+	    connect!(g, STR2, STR1; weight = 1, t_event = 181.0) #str2 -> str1
+	    connect!(g, STR1, AS)# str1->AS
+	    connect!(g, STR2, AS)# str2->AS
+	    connect!(g, STR1, SNcb; weight = 1.0) # str1->Snc
+        connect!(g, STR2, SNcb; weight = 1.0)  # str2->Snc
 
         @named env = ClassificationEnvironment(stim, N_trials)
         t_block = 90

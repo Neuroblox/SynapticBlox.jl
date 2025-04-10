@@ -9,11 +9,9 @@ function get_synapse!(blox_src; synapse_kwargs=(;), kwargs...)
 end
 
 # default fallbacks
-function blox_wiring_rule!(g, blox; kwargs...)
-    add_vertex!(g, blox)
-end
-function blox_wiring_rule!(g, blox_src, blox_dst; weight, conn_type=BasicConnection, kwargs...)
-    add_edge!(g, blox_src, blox_dst; conn=conn_type(weight), weight, kwargs...)
+function GraphDynamics.system_wiring_rule!(g::GraphSystem,
+                                           blox_src::AbstractBlox, blox_dst::AbstractBlox; weight, conn_type=BasicConnection, kwargs...)
+    connect!(g, blox_src, blox_dst; conn=conn_type(weight), weight, kwargs...)
 end
 
 struct BasicConnection <: ConnectionRule
@@ -56,11 +54,11 @@ turns into
 #   HHInhi => GABA_A_Synapse
 #             GABA_A_Synapse => HHExci
 ==========================================================================================#
-function Graphs.add_edge!(g::Neurograph, blox_src::Union{HHExci, HHInhi}, blox_dst::Union{HHExci, HHInhi}; kwargs...)
-    blox_wiring_rule!(g, blox_src, blox_dst; kwargs...)
+function GraphDynamics.connect!(g::GraphSystem, blox_src::Union{HHExci, HHInhi}, blox_dst::Union{HHExci, HHInhi}; kwargs...)
+    system_wiring_rule!(g, blox_src, blox_dst; kwargs...)
 end
 
-function blox_wiring_rule!(g::Neurograph, blox_src::HHExci, blox_dst::Union{HHExci, HHInhi};
+function GraphDynamics.system_wiring_rule!(g::GraphSystem, blox_src::HHExci, blox_dst::Union{HHExci, HHInhi};
                            learning_rule=NoLearningRule(), sta = false, kwargs...)
     weight = get_weight(kwargs, blox_src.name, blox_dst.name)
 
@@ -78,30 +76,30 @@ function blox_wiring_rule!(g::Neurograph, blox_src::HHExci, blox_dst::Union{HHEx
         ============================#
         syn = Glu_AMPA_STA_Synapse(;name=Symbol("$(blox_src.name)_$(blox_dst.name)_STA_synapse"),
                                    E_syn=blox_src.E_syn, τ₂=blox_src.τ)
-        add_edge!(g, blox_src, syn; kwargs..., weight=1)  # weight=1 marks this as a forward rule 
-        add_edge!(g, blox_dst, syn; kwargs..., weight=2)# weight=2 marks this as a reverse rule
-        add_edge!(g, syn, blox_dst; kwargs..., weight, conn=BasicConnection(weight), learning_rule)
+        connect!(g, blox_src, syn; kwargs..., weight=1)  # weight=1 marks this as a forward rule 
+        connect!(g, blox_dst, syn; kwargs..., weight=2)# weight=2 marks this as a reverse rule
+        connect!(g, syn, blox_dst; kwargs..., weight, conn=BasicConnection(weight), learning_rule)
     else
         # Generate a synapse (or fetch a pre-existing one)
         syn = get_synapse!(blox_src; kwargs...)
         conn = BasicConnection(weight)
-        if !has_edge(g, blox_src, syn) # If we're re-using a synapse, don't re-add the connection
-            add_edge!(g, blox_src, syn; kwargs..., weight, conn) # Note: connection between src and syn is not learnable!
+        if !has_connection(g, blox_src, syn) # If we're re-using a synapse, don't re-add the connection
+            connect!(g, blox_src, syn; kwargs..., weight, conn) # Note: connection between src and syn is not learnable!
         end
-        add_edge!(g, syn, blox_dst; kwargs..., weight, conn, learning_rule)
+        connect!(g, syn, blox_dst; kwargs..., weight, conn, learning_rule)
     end
     nothing
 end
 
-function blox_wiring_rule!(g::Neurograph, blox_src::HHInhi, blox_dst::Union{HHExci, HHInhi}; kwargs...)
+function GraphDynamics.system_wiring_rule!(g::GraphSystem, blox_src::HHInhi, blox_dst::Union{HHExci, HHInhi}; kwargs...)
     # Generate a synapse (or fetch a pre-existing one)
     syn = get_synapse!(blox_src; kwargs...)
     # wire up the src to syn and syn to dst
-    if !has_edge(g, blox_src, syn)
+    if !has_connection(g, blox_src, syn)
         # If we're re-using a synapse, don't re-add the connection
-        blox_wiring_rule!(g, blox_src, syn; kwargs...)
+        system_wiring_rule!(g, blox_src, syn; kwargs...)
     end
-    blox_wiring_rule!(g, syn, blox_dst; kwargs...)
+    system_wiring_rule!(g, syn, blox_dst; kwargs...)
     nothing
 end
 
@@ -160,7 +158,7 @@ end
 #---------------------------------------------------------------------
 # L-FLIC
 
-function blox_wiring_rule!(g, blox_src::L_FLICBlox, blox_dst::L_FLICBlox; kwargs...)
+function GraphDynamics.system_wiring_rule!(g::GraphSystem, blox_src::L_FLICBlox, blox_dst::L_FLICBlox; kwargs...)
     # users can supply a :connection_matrix to the graph edge, where
     # connection_matrix[i, j] determines if neurons_src[i] is connected to neurons_src[j]
     namespaced_nameof(x) = x.name
@@ -171,15 +169,15 @@ function blox_wiring_rule!(g, blox_src::L_FLICBlox, blox_dst::L_FLICBlox; kwargs
         name_postsyn = neuron_postsyn.name
         for (i, neuron_presyn) in enumerate(blox_src.excis)
             if name_postsyn != neuron_presyn.name && connection_matrix[i, j]
-                blox_wiring_rule!(g, neuron_presyn, neuron_postsyn; kwargs...)
+                system_wiring_rule!(g, neuron_presyn, neuron_postsyn; kwargs...)
             end
         end
     end
 end
 
-function blox_wiring_rule!(g, blox_src::HHInhi, blox_dst::L_FLICBlox; kwargs...)
+function GraphDynamics.system_wiring_rule!(g::GraphSystem, blox_src::HHInhi, blox_dst::L_FLICBlox; kwargs...)
     for neuron_postsyn in blox_dst.excis
-        blox_wiring_rule!(g, blox_src, neuron_postsyn; kwargs...)
+        system_wiring_rule!(g, blox_src, neuron_postsyn; kwargs...)
     end
 end
 
@@ -203,60 +201,60 @@ function hypergeometric_connections!(g, neurons_src, neurons_dst, name_src, name
         idx = sample(rem, min(in_degree, length(rem)); replace=false)
         if length(wt) == 1
             for neuron_presyn in neurons_src[idx]
-                blox_wiring_rule!(g, neuron_presyn, neuron_postsyn; kwargs...)
+                system_wiring_rule!(g, neuron_presyn, neuron_postsyn; kwargs...)
             end
         else
             for i in idx
-                blox_wiring_rule!(g, neurons_src[i], neuron_postsyn; kwargs..., weight=wt[i])
+                system_wiring_rule!(g, neurons_src[i], neuron_postsyn; kwargs..., weight=wt[i])
             end
         end
         outgoing_connections[idx] .+= 1
     end
 end
 
-function blox_wiring_rule!(g, blox_src::Union{CorticalBlox,STN,Thalamus}, blox_dst::Union{CorticalBlox,STN,Thalamus}; kwargs...)
+function GraphDynamics.system_wiring_rule!(g::GraphSystem, blox_src::Union{CorticalBlox,STN,Thalamus}, blox_dst::Union{CorticalBlox,STN,Thalamus}; kwargs...)
     neurons_dst = get_exci_neurons(blox_dst)
     neurons_src = get_exci_neurons(blox_src)
     hypergeometric_connections!(g, neurons_src, neurons_dst, blox_src.name, blox_dst.name; kwargs...)
 end
 
-function blox_wiring_rule!(g, blox_src::Union{Striatum, GPi, GPe}, blox_dst::Union{CorticalBlox,STN,Thalamus}; kwargs...)
+function GraphDynamics.system_wiring_rule!(g::GraphSystem, blox_src::Union{Striatum, GPi, GPe}, blox_dst::Union{CorticalBlox,STN,Thalamus}; kwargs...)
     neurons_dst = get_exci_neurons(blox_dst)
     neurons_src = get_inhi_neurons(blox_src)
     hypergeometric_connections!(g, neurons_src, neurons_dst, blox_src.name, blox_dst.name; kwargs...)
 end
 
-function blox_wiring_rule!(g, blox_src::NGNMM_theta, blox_dst::CorticalBlox; kwargs...)
+function GraphDynamics.system_wiring_rule!(g::GraphSystem, blox_src::NGNMM_theta, blox_dst::CorticalBlox; kwargs...)
     neurons_dst = get_inhi_neurons(blox_dst)
-    blox_wiring_rule!(g, blox_src, blox_dst.n_ff_inh; kwargs...)
+    system_wiring_rule!(g, blox_src, blox_dst.n_ff_inh; kwargs...)
 end
 
 
 #---------------------------------------------------------------------
 # GPi
 
-function blox_wiring_rule!(g, blox_src::Union{Striatum, GPi, GPe}, blox_dst::Union{GPi, GPe}; kwargs...)
+function GraphDynamics.system_wiring_rule!(g::GraphSystem, blox_src::Union{Striatum, GPi, GPe}, blox_dst::Union{GPi, GPe}; kwargs...)
     neurons_dst = get_inhi_neurons(blox_dst)
     neurons_src = get_inhi_neurons(blox_src)
     hypergeometric_connections!(g, neurons_src, neurons_dst, blox_src.name, blox_dst.name; kwargs...)
 end
 
-function blox_wiring_rule!(g, blox_src::Union{CorticalBlox,STN,Thalamus}, blox_dst::Union{GPi, GPe}; kwargs...)
+function GraphDynamics.system_wiring_rule!(g::GraphSystem, blox_src::Union{CorticalBlox,STN,Thalamus}, blox_dst::Union{GPi, GPe}; kwargs...)
     neurons_dst = get_inhi_neurons(blox_dst)
     neurons_src = get_exci_neurons(blox_src)
     hypergeometric_connections!(g, neurons_src, neurons_dst, blox_src.name, blox_dst.name; kwargs...)
 end
 
-function blox_wiring_rule!(g, blox_src::HHExci, blox_dst::Union{Striatum, GPi}; kwargs...)
+function GraphDynamics.system_wiring_rule!(g::GraphSystem, blox_src::HHExci, blox_dst::Union{Striatum, GPi}; kwargs...)
     for neuron_dst ∈ get_inhi_neurons(blox_dst)
-        blox_wiring_rule!(g, blox_src, neuron_dst; kwargs...)
+        system_wiring_rule!(g, blox_src, neuron_dst; kwargs...)
     end
 end
 
 #---------------------------------------------------------------------
 # Striatum
 
-function blox_wiring_rule!(g, cb::CorticalBlox, str::Striatum; kwargs...)
+function GraphDynamics.system_wiring_rule!(g::GraphSystem, cb::CorticalBlox, str::Striatum; kwargs...)
     neurons_dst = get_inhi_neurons(str)
     neurons_src = get_exci_neurons(cb)
     
@@ -277,25 +275,25 @@ function blox_wiring_rule!(g, cb::CorticalBlox, str::Striatum; kwargs...)
     for (i, neuron_presyn) ∈ enumerate(neurons_src)
         kwargs = (kwargs...,weight=wt_ar[i])
         for part ∈ algebraic_parts
-            blox_wiring_rule!(g, neuron_presyn, part; kwargs...)
+            system_wiring_rule!(g, neuron_presyn, part; kwargs...)
         end
     end
 end
 
-function blox_wiring_rule!(g, sys_src::Striatum, sys_dst::Striatum; kwargs...)
+function GraphDynamics.system_wiring_rule!(g::GraphSystem, sys_src::Striatum, sys_dst::Striatum; kwargs...)
     t_event = get(kwargs, :t_event) do
         error("No `t_event` provided for the connection between $(sys_src.name) and $(sys_dst.name)")
     end
-    blox_wiring_rule!(g, sys_src.matrisome, sys_dst.matrisome; t_event=t_event +   √(eps(t_event)), kwargs...)
-    blox_wiring_rule!(g, sys_src.matrisome, sys_dst.striosome; t_event=t_event + 2*√(eps(t_event)), kwargs...)
+    system_wiring_rule!(g, sys_src.matrisome, sys_dst.matrisome; t_event=t_event +   √(eps(t_event)), kwargs...)
+    system_wiring_rule!(g, sys_src.matrisome, sys_dst.striosome; t_event=t_event + 2*√(eps(t_event)), kwargs...)
     for inhib ∈ sys_dst.inhibs
-        blox_wiring_rule!(g, sys_src.matrisome, inhib; t_event=t_event+2*√(eps(t_event)), kwargs...)
+        system_wiring_rule!(g, sys_src.matrisome, inhib; t_event=t_event+2*√(eps(t_event)), kwargs...)
     end
     nothing
 end
 
-function blox_wiring_rule!(g, sys_src::TAN, sys_dst::Striatum; kwargs...)
-    blox_wiring_rule!(g, sys_src, sys_dst.matrisome; kwargs...)
+function GraphDynamics.system_wiring_rule!(g::GraphSystem, sys_src::TAN, sys_dst::Striatum; kwargs...)
+    system_wiring_rule!(g, sys_src, sys_dst.matrisome; kwargs...)
 end
 
 
@@ -303,17 +301,17 @@ end
 #---------------------------------------------------------------------
 # Discrete blox
 
-function blox_wiring_rule!(g, sys_src::Striatum, sys_dst::Union{TAN, SNc}; kwargs...)
-    blox_wiring_rule!(g, sys_src.striosome, sys_dst; kwargs...)
+function GraphDynamics.system_wiring_rule!(g::GraphSystem, sys_src::Striatum, sys_dst::Union{TAN, SNc}; kwargs...)
+    system_wiring_rule!(g, sys_src.striosome, sys_dst; kwargs...)
 end
 
-function blox_wiring_rule!(g, sys_src::Striosome, sys_dst::Union{TAN,SNc};
+function GraphDynamics.system_wiring_rule!(g::GraphSystem, sys_src::Striosome, sys_dst::Union{TAN,SNc};
                            weight, kwargs...)
     conn = BasicConnection(weight)
     if haskey(kwargs, :learning_rule)
         @info "" kwargs.learning_rule
     end
-    add_edge!(g, sys_src, sys_dst; weight, conn, kwargs...)
+    connect!(g, sys_src, sys_dst; weight, conn, kwargs...)
 end
 function (c::BasicConnection)(sys_src::Subsystem{Striosome}, sys_dst::Subsystem{<:Union{TAN, SNc}}, t)
     w = c.weight
@@ -321,13 +319,13 @@ function (c::BasicConnection)(sys_src::Subsystem{Striosome}, sys_dst::Subsystem{
     @reset input.jcn = w * sys_src.H * sys_src.jcn_t_block
 end
 
-function blox_wiring_rule!(g, sys_src::HHExci, sys_dst::Union{Matrisome, Striosome};
+function GraphDynamics.system_wiring_rule!(g::GraphSystem, sys_src::HHExci, sys_dst::Union{Matrisome, Striosome};
                            weight, learning_rule=NoLearningRule(), kwargs...)
     
     conn = BasicConnection(weight)
     learning_rule = maybe_set_state_pre( learning_rule, Symbol(sys_src.name, :₊spikes_cumulative))
     learning_rule = maybe_set_state_post(learning_rule, Symbol(sys_dst.name, :₊H_learning))
-    add_edge!(g, sys_src, sys_dst; weight, conn, learning_rule, kwargs...)
+    connect!(g, sys_src, sys_dst; weight, conn, learning_rule, kwargs...)
 end
 function (c::BasicConnection)(sys_src::Subsystem{HHExci}, sys_dst::Subsystem{<:Union{Matrisome, Striosome}}, t)
     w = c.weight
@@ -337,9 +335,9 @@ end
 
 
 
-function blox_wiring_rule!(g, sys_src::Matrisome, sys_dst::Union{Matrisome, Striosome, HHInhi}; weight=1.0, t_event, kwargs...)
+function GraphDynamics.system_wiring_rule!(g::GraphSystem, sys_src::Matrisome, sys_dst::Union{Matrisome, Striosome, HHInhi}; weight=1.0, t_event, kwargs...)
     conn = EventConnection(weight, (;t_init=0.1, t_event))
-    add_edge!(g, sys_src, sys_dst; conn, kwargs...)
+    connect!(g, sys_src, sys_dst; conn, kwargs...)
 end
 
 function (c::EventConnection)(src::Subsystem{Matrisome}, dst::Subsystem{<:Union{Matrisome, Striosome, HHInhi}}, t)
@@ -446,9 +444,9 @@ function GraphDynamics.apply_discrete_event!(integrator,
 end
 
 
-function blox_wiring_rule!(g, sys_src::TAN, sys_dst::Matrisome; weight=1.0, t_event, kwargs...)
+function GraphDynamics.system_wiring_rule!(g::GraphSystem, sys_src::TAN, sys_dst::Matrisome; weight=1.0, t_event, kwargs...)
     conn = EventConnection(weight, (; t_event))
-    add_edge!(g, sys_src, sys_dst; conn, kwargs...)
+    connect!(g, sys_src, sys_dst; conn, kwargs...)
 end
 function (c::EventConnection)(sys_src::Subsystem{TAN}, sys_dst::Subsystem{Matrisome}, t)
     w = c.weight
@@ -472,8 +470,8 @@ end
 
 #--------------------
 # ImageStimulus
-function blox_wiring_rule!(g, stim::ImageStimulus, neuron::Union{HHInhi, HHExci}; current_pixel, weight, kwargs...)
-    add_edge!(g, stim, neuron; conn=StimConnection(weight, current_pixel), weight, kwargs...)
+function GraphDynamics.system_wiring_rule!(g::GraphSystem, stim::ImageStimulus, neuron::Union{HHInhi, HHExci}; current_pixel, weight, kwargs...)
+    connect!(g, stim, neuron; conn=StimConnection(weight, current_pixel), weight, kwargs...)
 end
 
 struct StimConnection <: ConnectionRule
@@ -487,11 +485,11 @@ function (c::StimConnection)(src::Subsystem{ImageStimulus}, dst::Subsystem{<:Uni
     @reset input.I_in = w * src.current_image[c.pixel_index]
 end
 
-function blox_wiring_rule!(g, src::ImageStimulus, dst::CorticalBlox; kwargs...)
+function GraphDynamics.system_wiring_rule!(g::GraphSystem, src::ImageStimulus, dst::CorticalBlox; kwargs...)
     current_pixel = 1
-    for n_dst ∈ vertices(dst.graph)
+    for n_dst ∈ nodes(dst.graph)
         if n_dst isa HHExci
-            blox_wiring_rule!(g, src, n_dst; current_pixel, kwargs...)
+            system_wiring_rule!(g, src, n_dst; current_pixel, kwargs...)
             current_pixel = mod(current_pixel, src.N_pixels) + 1
         end
     end

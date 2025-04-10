@@ -1,3 +1,38 @@
+function t_block_event(key)
+    function _apply_t_block_event!(integrator)
+        (; params_partitioned, connection_matrices, partition_plan) = integrator.p
+        states_partitioned = partitioned(integrator.u, partition_plan)
+        t = integrator.t
+        # Some t_block events need to happen before others, so we split them into two categories: 'early' and 'late'.
+        # the old implementation did this as separate events, but here we can just force the early ones to happen before
+        # the late ones without having to have extra events.
+
+        for i ∈ eachindex(states_partitioned)
+            states_partitioned_i = states_partitioned[i]
+            params_partitioned_i = params_partitioned[i]
+            tag = get_tag(eltype(states_partitioned_i))
+            if has_t_block_event(tag)
+                if is_t_block_event_time(tag, key, t)
+                    for j ∈ eachindex(states_partitioned_i)
+                        sys_dst = Subsystem(states_partitioned_i[j], params_partitioned_i[j])
+                        if t_block_event_requires_inputs(tag)
+                            input = calculate_inputs(Val(i), j, states_partitioned, params_partitioned, connection_matrices, t)
+                        else
+                            input = initialize_input(sys_dst)
+                        end
+                        apply_t_block_event!(@view(states_partitioned_i[j]), @view(params_partitioned_i[j]), sys_dst, input, t)
+                    end
+                end
+            end
+        end
+    end
+end
+
+has_t_block_event(::Type{Union{}}) = error("Something went very wrong. This error should only exist for method disambiguation")
+t_block_event_requires_inputs(::Type{Union{}}) = error("Something went very wrong. This error should only exist for method disambiguation")
+has_t_block_event(::Type{T}) where {T} = false
+
+
 function run_experiment!(agent::Agent, env::ClassificationEnvironment; t_warmup=0, verbose=false, kwargs...)
     N_trials = env.N_trials
     t_trial = env.t_trial
